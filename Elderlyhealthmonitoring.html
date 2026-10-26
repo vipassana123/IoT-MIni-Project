@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Monitoring Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fb;
+      color: #1e293b;
+    }
+
+    header {
+      background: #123b62;
+      color: white;
+      padding: 24px 16px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+    }
+
+    header p {
+      margin: 0;
+      color: #dbeafe;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .settings, .card, .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 3px 12px #0f172a0d;
+    }
+
+    .settings {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    button {
+      margin-top: 14px;
+      padding: 11px 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #1769aa;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    button:hover {
+      background: #0f4c81;
+    }
+
+    #message {
+      margin-top: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #475569;
+    }
+
+    .value {
+      font-size: 32px;
+      font-weight: bold;
+      margin: 12px 0;
+    }
+
+    .status {
+      font-weight: bold;
+      color: #64748b;
+    }
+
+    .normal {
+      color: #15803d;
+    }
+
+    .warning {
+      color: #dc2626;
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .panel h2 {
+      font-size: 18px;
+      margin-top: 0;
+    }
+
+    .chart-box {
+      position: relative;
+      height: 250px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 550px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+    }
+
+    th {
+      background: #f8fafc;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #64748b;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Health Monitoring System</h1>
+    <p>IoT-Based Multi-Parameter Monitoring Dashboard</p>
+  </header>
+
+  <main>
+    <section class="settings">
+      <h2>ThingSpeak Connection</h2>
+
+      <label for="channelId">Channel ID</label>
+      <input id="channelId" type="text"
+             placeholder="Enter your ThingSpeak Channel ID">
+
+      <label for="readKey">Read API Key</label>
+      <input id="readKey" type="password"
+             placeholder="Enter your Read API Key">
+
+      <button id="connectBtn">Connect to ThingSpeak</button>
+      <button id="refreshBtn">Refresh Now</button>
+
+      <p id="message">Enter your channel details to begin.</p>
+      <p id="updated">Last successful update: Not yet updated</p>
+    </section>
+
+    <section class="cards">
+      <div class="card">
+        <h3>SpO₂</h3>
+        <div class="value" id="spo2">-- %</div>
+        <div class="status" id="spo2Status">Waiting for data</div>
+      </div>
+
+      <div class="card">
+        <h3>Body Temperature</h3>
+        <div class="value" id="temperature">-- °C</div>
+        <div class="status" id="tempStatus">Waiting for data</div>
+      </div>
+
+      <div class="card">
+        <h3>Pulse Rate</h3>
+        <div class="value" id="pulse">-- BPM</div>
+        <div class="status" id="pulseStatus">Waiting for data</div>
+      </div>
+    </section>
+
+    <section class="charts">
+      <div class="panel">
+        <h2>SpO₂ History (%)</h2>
+        <div class="chart-box">
+          <canvas id="spo2Chart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Temperature History (°C)</h2>
+        <div class="chart-box">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Pulse Rate History (BPM)</h2>
+        <div class="chart-box">
+          <canvas id="pulseChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Recent Readings & Warning History</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>SpO₂ (%)</th>
+              <th>Temperature (°C)</th>
+              <th>Pulse (BPM)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="history">
+            <tr>
+              <td colspan="5">No readings loaded yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Educational simulation only. Not intended for medical decisions.
+  </footer>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    let refreshTimer = null;
+
+    function makeChart(canvasId, label, color, unit) {
+      return new Chart($(canvasId), {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [{
+            label: label,
+            data: [],
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2,
+            tension: 0.25,
+            pointRadius: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: {
+            y: {
+              title: {
+                display: true,
+                text: unit
+              }
+            }
+          }
+        }
+      });
+    }
+
+    const spo2Chart = makeChart(
+      "spo2Chart", "SpO₂", "#1685d1", "%"
+    );
+
+    const tempChart = makeChart(
+      "tempChart", "Temperature", "#e87924", "°C"
+    );
+
+    const pulseChart = makeChart(
+      "pulseChart", "Pulse Rate", "#16a085", "BPM"
+    );
+
+    function setStatus(id, text, isWarning) {
+      const el = $(id);
+      el.textContent = text;
+      el.className = "status " +
+        (isWarning ? "warning" : "normal");
+    }
+
+    function classifyReading(spo2, temp, pulse) {
+      const warnings = [];
+
+      // Demonstration thresholds, not medical diagnosis.
+      if (spo2 < 95) warnings.push("Low SpO₂");
+      if (temp >= 38) warnings.push("High temperature");
+      if (pulse < 60 || pulse > 100) {
+        warnings.push("Pulse outside demo range");
+      }
+
+      return warnings.length
+        ? warnings.join("; ")
+        : "Normal (demo thresholds)";
+    }
+
+    async function loadData() {
+      const channel = $("channelId").value.trim();
+      const key = $("readKey").value.trim();
+
+      if (!channel) {
+        $("message").textContent = "Enter your Channel ID first.";
+        return;
+      }
+
+      $("message").textContent = "Loading ThingSpeak data...";
+
+      try {
+        let url =
+          "https://api.thingspeak.com/channels/" +
+          encodeURIComponent(channel) + "/feeds.json?results=20";
+
+        if (key) {
+          url += "&api_key=" + encodeURIComponent(key);
+        }
+
+        const response = await fetch(url, { cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error("HTTP error " + response.status);
+        }
+
+        const data = await response.json();
+
+        if (!data.feeds || data.feeds.length === 0) {
+          throw new Error(
+            "No readings found. Check your channel and Read API Key."
+          );
+        }
+
+        const feeds = data.feeds.filter(feed =>
+          feed.field1 !== null &&
+          feed.field2 !== null &&
+          feed.field3 !== null &&
+          feed.field1 !== "" &&
+          feed.field2 !== "" &&
+          feed.field3 !== ""
+        );
+
+        if (feeds.length === 0) {
+          throw new Error(
+            "No complete readings found in Fields 1, 2 and 3."
+          );
+        }
+
+        const latest = feeds[feeds.length - 1];
+
+        const spo2 = Number(latest.field1);
+        const temp = Number(latest.field2);
+        const pulse = Number(latest.field3);
+
+        $("spo2").textContent = spo2.toFixed(1) + " %";
+        $("temperature").textContent = temp.toFixed(1) + " °C";
+        $("pulse").textContent = Math.round(pulse) + " BPM";
+
+        setStatus(
+          "spo2Status",
+          spo2 < 95 ? "Warning: low SpO₂" : "Within demo range",
+          spo2 < 95
+        );
+
+        setStatus(
+          "tempStatus",
+          temp >= 38 ? "Warning: high temperature" :
+            "Within demo range",
+          temp >= 38
+        );
+
+        const pulseWarning = pulse < 60 || pulse > 100;
+
+        setStatus(
+          "pulseStatus",
+          pulseWarning ? "Warning: pulse outside demo range" :
+            "Within demo range",
+          pulseWarning
+        );
+
+        const labels = feeds.map(feed =>
+          new Date(feed.created_at).toLocaleTimeString()
+        );
+
+        function updateChart(chart, field) {
+          chart.data.labels = labels;
+          chart.data.datasets[0].data =
+            feeds.map(feed => Number(feed[field]));
+          chart.update();
+        }
+
+        updateChart(spo2Chart, "field1");
+        updateChart(tempChart, "field2");
+        updateChart(pulseChart, "field3");
+
+        $("history").innerHTML = "";
+
+        [...feeds].reverse().forEach(feed => {
+          const s = Number(feed.field1);
+          const t = Number(feed.field2);
+          const p = Number(feed.field3);
+
+          const row = document.createElement("tr");
+          const values = [
+            new Date(feed.created_at).toLocaleString(),
+            s.toFixed(1),
+            t.toFixed(1),
+            Math.round(p),
+            classifyReading(s, t, p)
+          ];
+
+          values.forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+          });
+
+          const statusCell = row.lastElementChild;
+          const warning =
+            s < 95 || t >= 38 || p < 60 || p > 100;
+
+          statusCell.className = warning ? "warning" : "normal";
+          $("history").appendChild(row);
+        });
+
+        $("updated").textContent =
+          "Last successful update: " + new Date().toLocaleString();
+
+        $("message").textContent =
+          "Connected successfully. " + feeds.length +
+          " readings loaded.";
+
+      } catch (error) {
+        $("message").textContent =
+          "Unable to load data: " + error.message;
+      }
+    }
+
+    $("connectBtn").addEventListener("click", () => {
+      if (refreshTimer) clearInterval(refreshTimer);
+
+      loadData();
+
+      refreshTimer = setInterval(loadData, 20000);
+    });
+
+    $("refreshBtn").addEventListener("click", loadData);
+  </script>
+</body>
+</html>
